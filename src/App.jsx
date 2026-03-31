@@ -15,6 +15,7 @@ export default function PersonalCoachingWebsite() {
   });
 
   const [status, setStatus] = useState({ type: 'idle', message: '' });
+  const [selectedOffer, setSelectedOffer] = useState('');
 
   const benefits = [
     {
@@ -109,6 +110,19 @@ export default function PersonalCoachingWebsite() {
     },
   ];
 
+  function handleOfferSelect(offerName) {
+    setSelectedOffer(offerName);
+    setFormData((current) => ({
+      ...current,
+      message: current.message || `Ich interessiere mich für das Angebot: ${offerName}.`,
+    }));
+
+    const section = document.getElementById('kontakt');
+    if (section) {
+      section.scrollIntoView({ behavior: 'smooth' });
+    }
+  }
+
   function handleChange(event) {
     const { name, value, type, checked } = event.target;
     setFormData((current) => ({
@@ -146,6 +160,7 @@ export default function PersonalCoachingWebsite() {
           Ziel: formData.goal,
           Trainingserfahrung: formData.experience,
           Nachricht: formData.message,
+          Angebot: selectedOffer,
         }),
       });
 
@@ -163,6 +178,7 @@ export default function PersonalCoachingWebsite() {
         message: '',
         consent: false,
       });
+      setSelectedOffer('');
     } catch {
       setStatus({ type: 'error', message: 'Der Versand hat nicht funktioniert. Bitte versuche es erneut.' });
     }
@@ -189,7 +205,7 @@ export default function PersonalCoachingWebsite() {
             href="#kontakt"
             className="rounded-2xl border border-blue-700 bg-blue-700 px-4 py-2 text-sm font-medium text-white transition hover:opacity-90"
           >
-            Erstgespräch anfragen
+            Jetzt Anfrage senden
           </a>
         </div>
       </header>
@@ -242,7 +258,7 @@ export default function PersonalCoachingWebsite() {
             <div className="mt-8 rounded-[2rem] border border-blue-100 bg-blue-50 p-5 shadow-sm">
               <p className="text-sm font-semibold uppercase tracking-[0.2em] text-blue-700">Sonderangebot zum Start</p>
               <p className="mt-2 max-w-2xl text-slate-700">
-                Für die ersten 5 Kunden gibt es ein vergünstigtes Launch-Angebot. Damit senkst du die Einstiegshürde, ohne billig zu wirken.
+                Sichere dir als einer der ersten 5 Kunden einen vergünstigten Einstieg in die Zusammenarbeit.
               </p>
             </div>
           </div>
@@ -261,10 +277,10 @@ export default function PersonalCoachingWebsite() {
             </div>
 
             <div className="rounded-[2rem] border border-blue-100 bg-white p-6 shadow-sm">
-              <p className="text-sm text-slate-500">Warum diese Seite anders wirkt</p>
-              <p className="mt-2 text-2xl font-semibold">Klare Vorgaben statt Überforderung</p>
+              <p className="text-sm text-slate-500">Was dich erwartet</p>
+              <p className="mt-2 text-2xl font-semibold">Klare Orientierung statt Überforderung</p>
               <p className="mt-3 text-slate-600">
-                Du weißt, was du trainierst, wie du startest, worauf du achtest und wie dein Fortschritt überprüft wird. Genau das schafft Vertrauen.
+                Du bekommst eine klare Orientierung für Training, Ernährung und die nächsten Schritte, damit Fortschritt nachvollziehbar und planbar wird.
               </p>
             </div>
           </div>
@@ -274,9 +290,9 @@ export default function PersonalCoachingWebsite() {
           <div className="mx-auto max-w-7xl px-6 py-20">
             <div className="mb-12 max-w-2xl">
               <p className="text-sm uppercase tracking-[0.25em] text-slate-500">Angebot</p>
-              <h3 className="mt-3 text-3xl font-bold md:text-4xl">Klare Angebote statt Preischaos</h3>
+              <h3 className="mt-3 text-3xl font-bold md:text-4xl">Wähle das passende Coaching-Modell</h3>
               <p className="mt-4 text-slate-600">
-                Der Unterschied zwischen den Paketen muss sofort verständlich sein. Sonst wirkt das Angebot willkürlich und schwächt die Conversion.
+                Vom vergünstigten Einstieg bis zur engeren 1:1 Begleitung ist klar erkennbar, welches Angebot zu welchem Bedarf passt.
               </p>
             </div>
 
@@ -311,12 +327,21 @@ export default function PersonalCoachingWebsite() {
                     ))}
                   </div>
 
-                  <a
-                    href="#kontakt"
-                    className="mt-8 inline-flex w-full items-center justify-center rounded-2xl bg-blue-700 px-5 py-3 font-semibold text-white transition hover:opacity-90"
-                  >
-                    Kostenloses Erstgespräch anfragen
-                  </a>
+                  <div className="mt-8 space-y-3">
+                    <button
+                      type="button"
+                      onClick={() => handleOfferSelect(offer.name)}
+                      className="inline-flex w-full items-center justify-center rounded-2xl bg-blue-700 px-5 py-3 font-semibold text-white transition hover:opacity-90"
+                    >
+                      Dieses Angebot anfragen
+                    </button>
+                    <a
+                      href={`mailto:polgota.buisness@gmail.com?subject=${encodeURIComponent(`Anfrage ${offer.name}`)}`}
+                      className="inline-flex w-full items-center justify-center rounded-2xl border border-slate-300 bg-white px-5 py-3 font-semibold text-slate-900 transition hover:bg-slate-100"
+                    >
+                      Direkt per E-Mail anfragen
+                    </a>
+                  </div>
                 </div>
               ))}
             </div>
@@ -330,7 +355,7 @@ export default function PersonalCoachingWebsite() {
                 <p className="text-sm uppercase tracking-[0.25em] text-slate-500">Leistungsübersicht</p>
                 <h3 className="mt-3 text-3xl font-bold md:text-4xl">Was du konkret bekommst</h3>
                 <p className="mt-4 leading-7 text-slate-600">
-                  Viele Seiten reden viel und liefern wenig Klarheit. Hier ist sauber sichtbar, was dieses Coaching inhaltlich abdeckt.
+                  Hier siehst du auf einen Blick, welche Schwerpunkte das Coaching in Training, Ernährung und Betreuung abdeckt.
                 </p>
               </div>
 
@@ -353,7 +378,7 @@ export default function PersonalCoachingWebsite() {
                 <p className="text-sm uppercase tracking-[0.25em] text-slate-500">Ablauf</p>
                 <h3 className="mt-3 text-3xl font-bold md:text-4xl">So läuft die Zusammenarbeit ab</h3>
                 <p className="mt-4 text-slate-600">
-                  Direkt, verständlich und professionell. Der Interessent soll von Anfang an merken, dass hier Ordnung herrscht.
+                  Die Zusammenarbeit ist klar aufgebaut, damit du von Anfang an weißt, was dich erwartet.
                 </p>
               </div>
 
@@ -403,7 +428,7 @@ export default function PersonalCoachingWebsite() {
               </div>
 
               <div className="rounded-[2rem] border border-slate-200 bg-white p-8 shadow-sm">
-                <p className="text-sm text-slate-500">Warum diese Seite Vertrauen schafft</p>
+                <p className="text-sm text-slate-500">Warum Kunden hier richtig sind</p>
                 <div className="mt-6 space-y-4">
                   {[
                     'klare und verständliche Trainingsstruktur statt Überforderung',
@@ -426,9 +451,9 @@ export default function PersonalCoachingWebsite() {
             <div className="grid gap-10 md:grid-cols-[0.95fr_1.05fr] md:items-start">
               <div>
                 <p className="text-sm uppercase tracking-[0.25em] text-slate-500">FAQ</p>
-                <h3 className="mt-3 text-3xl font-bold md:text-4xl">Fragen, die vor einer Anfrage oft auftauchen</h3>
+                <h3 className="mt-3 text-3xl font-bold md:text-4xl">Häufige Fragen</h3>
                 <p className="mt-4 leading-7 text-slate-600">
-                  Dieser Block nimmt Unsicherheit raus und erhöht Vertrauen. Viele Coaching-Seiten sind hier schwach oder komplett leer.
+                  Hier findest du Antworten auf häufige Fragen zur Zusammenarbeit, zum Ablauf und zu den Inhalten des Coachings.
                 </p>
               </div>
 
@@ -452,10 +477,17 @@ export default function PersonalCoachingWebsite() {
                   <p className="text-sm uppercase tracking-[0.25em] text-slate-500">Kontakt</p>
                   <h3 className="mt-3 text-3xl font-bold md:text-4xl">Lass uns unverbindlich prüfen, ob das Coaching zu dir passt.</h3>
                   <p className="mt-4 text-slate-600">
-                    Das Formular wirkt professioneller als eine reine E-Mail-Kachel, sammelt direkt brauchbare Infos und senkt Reibung für Interessenten.
+                    Wenn du Interesse hast, kannst du hier direkt unverbindlich anfragen und kurz dein Ziel sowie deine aktuelle Situation schildern.
                   </p>
 
                   <div className="mt-8 space-y-4">
+                    {selectedOffer && (
+                      <div className="rounded-2xl border border-blue-200 bg-blue-50 p-5">
+                        <p className="text-sm text-blue-700">Ausgewähltes Angebot</p>
+                        <p className="mt-2 font-semibold text-slate-900">{selectedOffer}</p>
+                      </div>
+                    )}
+
                     <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
                       <p className="text-sm text-slate-500">E-Mail</p>
                       <p className="mt-2 break-all font-semibold">polgota.buisness@gmail.com</p>
@@ -601,7 +633,7 @@ export default function PersonalCoachingWebsite() {
                 <p className="text-sm uppercase tracking-[0.25em] text-blue-100">Nächster Schritt</p>
                 <h3 className="mt-3 text-3xl font-bold md:text-4xl">Starte mit einem kostenlosen Erstgespräch und finde heraus, welches Coaching wirklich zu dir passt.</h3>
                 <p className="mt-4 text-blue-100">
-                  Kein unnötiger Druck. Erst Ziel und Ausgangslage klären, dann entscheiden, ob die Zusammenarbeit sinnvoll ist.
+                  Teile kurz dein Ziel und deine Ausgangslage mit. Danach schauen wir gemeinsam, welches Angebot für dich sinnvoll ist.
                 </p>
               </div>
 
@@ -609,7 +641,7 @@ export default function PersonalCoachingWebsite() {
                 href="#kontakt"
                 className="inline-flex items-center justify-center rounded-2xl bg-white px-6 py-3 font-semibold text-blue-700 transition hover:opacity-90"
               >
-                Kostenloses Erstgespräch anfragen
+                Jetzt Anfrage senden
               </a>
             </div>
           </div>
