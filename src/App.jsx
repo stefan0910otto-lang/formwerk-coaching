@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
+import './App.css';
 import heroImage from './assets/hero.png';
 
 const CALENDLY_URL = import.meta.env.VITE_CALENDLY_URL || '';
@@ -14,15 +15,70 @@ function openCalendly() {
   }
 }
 
+// ── Scroll-reveal hook ──────────────────────────────────────────────────────
+function useScrollReveal(threshold = 0.12) {
+  const ref = useRef(null);
+  const [visible, setVisible] = useState(false);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const obs = new IntersectionObserver(
+      ([e]) => { if (e.isIntersecting) setVisible(true); },
+      { threshold }
+    );
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, [threshold]);
+  return { ref, visible };
+}
+
+// ── Wrapper that fades + slides up on scroll ────────────────────────────────
+function Reveal({ children, delay = 0, className = '' }) {
+  const { ref, visible } = useScrollReveal();
+  return (
+    <div
+      ref={ref}
+      className={className}
+      style={{
+        opacity: visible ? 1 : 0,
+        transform: visible ? 'translateY(0)' : 'translateY(36px)',
+        transition: `opacity 0.65s ease ${delay}s, transform 0.65s ease ${delay}s`,
+      }}
+    >
+      {children}
+    </div>
+  );
+}
+
+// ── 3-D mouse-tilt card ─────────────────────────────────────────────────────
+function TiltCard({ children, className = '', intensity = 7 }) {
+  const ref = useRef(null);
+  function onMove(e) {
+    const card = ref.current;
+    if (!card) return;
+    const r = card.getBoundingClientRect();
+    const rotY = ((e.clientX - r.left) / r.width  - 0.5) * intensity * 2;
+    const rotX = (0.5 - (e.clientY - r.top)  / r.height) * intensity * 2;
+    card.style.transition = 'none';
+    card.style.transform = `perspective(900px) rotateX(${rotX}deg) rotateY(${rotY}deg) translateZ(14px)`;
+  }
+  function onLeave() {
+    const card = ref.current;
+    if (!card) return;
+    card.style.transition = 'transform 0.55s ease';
+    card.style.transform = 'perspective(900px) rotateX(0) rotateY(0) translateZ(0)';
+  }
+  return (
+    <div ref={ref} className={`card-3d ${className}`} onMouseMove={onMove} onMouseLeave={onLeave}>
+      {children}
+    </div>
+  );
+}
+
+// ── Shared UI atoms ─────────────────────────────────────────────────────────
 function CheckIcon({ light = false }) {
   return (
-    <svg
-      className={`h-4 w-4 shrink-0 ${light ? 'text-white' : 'text-blue-600'}`}
-      fill="none"
-      viewBox="0 0 24 24"
-      stroke="currentColor"
-      strokeWidth={3}
-    >
+    <svg className={`h-4 w-4 shrink-0 ${light ? 'text-white' : 'text-blue-600'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
       <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
     </svg>
   );
@@ -33,21 +89,13 @@ function CookieBanner({ onAccept }) {
     <div className="fixed bottom-0 left-0 right-0 z-50 border-t border-slate-200 bg-white p-4 shadow-xl md:px-8">
       <div className="mx-auto flex max-w-7xl flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <p className="text-sm leading-6 text-slate-600">
-          Diese Website verwendet <strong>Google Fonts</strong> (Schriftarten) und <strong>Formspree</strong> (Kontaktformular).
-          Durch die Nutzung der Seite werden Daten an externe Anbieter übermittelt.{' '}
+          Diese Website verwendet <strong>Google Fonts</strong> und <strong>Formspree</strong>.
+          Durch Nutzung der Seite werden Daten an externe Anbieter übermittelt.{' '}
           <a href="/datenschutz.html" className="underline hover:text-blue-600">Datenschutzerklärung</a>
         </p>
         <div className="flex shrink-0 gap-3">
-          <a href="/datenschutz.html" className="rounded-xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-600 transition hover:bg-slate-50">
-            Details
-          </a>
-          <button
-            type="button"
-            onClick={onAccept}
-            className="rounded-xl bg-blue-600 px-5 py-2 text-sm font-bold text-white transition hover:bg-blue-700"
-          >
-            Akzeptieren
-          </button>
+          <a href="/datenschutz.html" className="rounded-xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-600 transition hover:bg-slate-50">Details</a>
+          <button type="button" onClick={onAccept} className="rounded-xl bg-blue-600 px-5 py-2 text-sm font-bold text-white transition hover:bg-blue-700">Akzeptieren</button>
         </div>
       </div>
     </div>
@@ -62,20 +110,16 @@ function InstagramIcon() {
   );
 }
 
+// ── Main Component ──────────────────────────────────────────────────────────
 export default function PersonalCoachingWebsite() {
   const brandName = 'FormWerk Coaching';
   const formspreeEndpoint = 'https://formspree.io/f/xkoprgqz';
 
   const [formData, setFormData] = useState({
-    firstName: '',
-    email: '',
-    age: '',
-    goal: 'Muskelaufbau',
-    experience: 'Kompletter Anfänger',
-    message: '',
-    consent: false,
+    firstName: '', email: '', age: '',
+    goal: 'Muskelaufbau', experience: 'Kompletter Anfänger',
+    message: '', consent: false,
   });
-
   const [status, setStatus] = useState({ type: 'idle', message: '' });
   const [selectedOffer, setSelectedOffer] = useState('');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -89,22 +133,10 @@ export default function PersonalCoachingWebsite() {
   }
 
   const benefits = [
-    {
-      title: 'Strukturierter Einstieg',
-      text: 'Gerade Anfänger brauchen keine wilden Pläne, sondern klare Schritte, verständliche Erklärungen und eine saubere Struktur.',
-    },
-    {
-      title: 'Training, das nachvollziehbar ist',
-      text: 'Übungen, Aufbau, Technik und Progression werden so erklärt, dass du verstehst, was du tust und warum du es tust.',
-    },
-    {
-      title: 'Ernährungscoaching inklusive',
-      text: 'Du bekommst eine alltagstaugliche Ernährungsstruktur statt unnötiger Verwirrung, Extremen oder Internet-Halbwissen.',
-    },
-    {
-      title: 'Ortsunabhängige Betreuung',
-      text: 'Die Zusammenarbeit funktioniert flexibel online. Damit ist das Coaching nicht an einen Ort gebunden.',
-    },
+    { title: 'Strukturierter Einstieg',        text: 'Gerade Anfänger brauchen keine wilden Pläne, sondern klare Schritte, verständliche Erklärungen und eine saubere Struktur.' },
+    { title: 'Training, das nachvollziehbar ist', text: 'Übungen, Aufbau, Technik und Progression werden so erklärt, dass du verstehst, was du tust und warum du es tust.' },
+    { title: 'Ernährungscoaching inklusive',    text: 'Du bekommst eine alltagstaugliche Ernährungsstruktur statt unnötiger Verwirrung, Extremen oder Internet-Halbwissen.' },
+    { title: 'Ortsunabhängige Betreuung',       text: 'Die Zusammenarbeit funktioniert flexibel online. Damit ist das Coaching nicht an einen Ort gebunden.' },
   ];
 
   const steps = [
@@ -116,105 +148,54 @@ export default function PersonalCoachingWebsite() {
 
   const offers = [
     {
-      name: 'Launch Angebot',
-      price: '59',
-      period: '/ Monat',
-      subtitle: 'Nur für die ersten 5 Kunden',
-      badge: 'Erste 5 Plätze',
-      highlight: true,
+      name: 'Launch Angebot', price: '59', period: '/ Monat',
+      subtitle: 'Nur für die ersten 5 Kunden', badge: 'Erste 5 Plätze', highlight: true,
       paymentLink: 'https://buy.stripe.com/4gM6oGcp85gu7cVgwG0ZW01',
-      features: [
-        'Kostenloses Erstgespräch',
-        'Individueller Trainingsplan',
-        'Grundlegende Ernährungsstruktur',
-        '1 Check-in pro Woche',
-        'E-Mail Support',
-        'Online & ortsunabhängig',
-      ],
+      features: ['Kostenloses Erstgespräch', 'Individueller Trainingsplan', 'Grundlegende Ernährungsstruktur', '1 Check-in pro Woche', 'E-Mail Support', 'Online & ortsunabhängig'],
     },
     {
-      name: 'Starter Coaching',
-      price: '79',
-      period: '/ Monat',
-      subtitle: 'Für Anfänger, die sauber starten wollen',
-      badge: null,
-      highlight: false,
+      name: 'Starter Coaching', price: '79', period: '/ Monat',
+      subtitle: 'Für Anfänger, die sauber starten wollen', badge: null, highlight: false,
       paymentLink: 'https://buy.stripe.com/28EfZg4WGcIW9l380a0ZW00',
-      features: [
-        'Kostenloses Erstgespräch',
-        'Individueller Trainingsplan',
-        'Grundlegende Ernährungsstruktur',
-        '1 Check-in pro Woche',
-        'E-Mail Support',
-        'Online & ortsunabhängig',
-      ],
+      features: ['Kostenloses Erstgespräch', 'Individueller Trainingsplan', 'Grundlegende Ernährungsstruktur', '1 Check-in pro Woche', 'E-Mail Support', 'Online & ortsunabhängig'],
     },
     {
-      name: '1:1 Betreuung',
-      price: '149',
-      period: '/ Monat',
-      subtitle: 'Mehr Kontrolle, mehr Anpassung, mehr Begleitung',
-      badge: 'Beliebt',
-      highlight: false,
+      name: '1:1 Betreuung', price: '149', period: '/ Monat',
+      subtitle: 'Mehr Kontrolle, mehr Anpassung, mehr Begleitung', badge: 'Beliebt', highlight: false,
       paymentLink: 'https://buy.stripe.com/4gM3cuexgdN09l30xI0ZW02',
-      features: [
-        'Alles aus Starter Coaching',
-        'Ausführlichere Ernährungsbegleitung',
-        'Mehrere Feedbackpunkte pro Woche',
-        'Regelmäßige Plananpassungen',
-        'Engerer persönlicher Support',
-        'Online & flexibel',
-      ],
+      features: ['Alles aus Starter Coaching', 'Ausführlichere Ernährungsbegleitung', 'Mehrere Feedbackpunkte pro Woche', 'Regelmäßige Plananpassungen', 'Engerer persönlicher Support', 'Online & flexibel'],
     },
   ];
 
   const faqs = [
-    {
-      q: 'Ist das Coaching auch für komplette Anfänger geeignet?',
-      a: 'Ja. Genau darauf ist das Angebot ausgelegt. Training, Ernährung und Struktur werden verständlich erklärt und an dein Niveau angepasst.',
-    },
-    {
-      q: 'Muss ich bei Clever Fit trainieren?',
-      a: 'Nein. Das Coaching ist ortsunabhängig aufgebaut und kann unabhängig von einem bestimmten Studio genutzt werden.',
-    },
-    {
-      q: 'Ist Ernährungscoaching enthalten?',
-      a: 'Ja. Je nach Paket bekommst du eine grundlegende oder ausführlichere Ernährungsstruktur passend zu deinem Ziel und Alltag.',
-    },
-    {
-      q: 'Wie läuft die Betreuung ab?',
-      a: 'Nach dem Erstkontakt folgt eine Analyse deiner Ausgangslage. Danach bekommst du einen individuellen Plan und regelmäßige Rückmeldungen mit Anpassungen.',
-    },
+    { q: 'Ist das Coaching auch für komplette Anfänger geeignet?', a: 'Ja. Genau darauf ist das Angebot ausgelegt. Training, Ernährung und Struktur werden verständlich erklärt und an dein Niveau angepasst.' },
+    { q: 'Muss ich bei Clever Fit trainieren?',                    a: 'Nein. Das Coaching ist ortsunabhängig aufgebaut und kann unabhängig von einem bestimmten Studio genutzt werden.' },
+    { q: 'Ist Ernährungscoaching enthalten?',                      a: 'Ja. Je nach Paket bekommst du eine grundlegende oder ausführlichere Ernährungsstruktur passend zu deinem Ziel und Alltag.' },
+    { q: 'Wie läuft die Betreuung ab?',                            a: 'Nach dem Erstkontakt folgt eine Analyse deiner Ausgangslage. Danach bekommst du einen individuellen Plan und regelmäßige Rückmeldungen mit Anpassungen.' },
   ];
 
   const navLinks = [
-    { href: '#angebot', label: 'Angebot' },
-    { href: '#ablauf', label: 'Ablauf' },
+    { href: '#angebot',    label: 'Angebot' },
+    { href: '#ablauf',     label: 'Ablauf' },
     { href: '#ueber-mich', label: 'Über mich' },
-    { href: '#faq', label: 'FAQ' },
-    { href: '#kontakt', label: 'Kontakt' },
+    { href: '#faq',        label: 'FAQ' },
+    { href: '#kontakt',    label: 'Kontakt' },
   ];
 
   function handleOfferSelect(offerName) {
     setSelectedOffer(offerName);
-    setFormData((current) => ({
-      ...current,
-      message: current.message || `Ich interessiere mich für das Angebot: ${offerName}.`,
-    }));
+    setFormData((c) => ({ ...c, message: c.message || `Ich interessiere mich für das Angebot: ${offerName}.` }));
     setMobileMenuOpen(false);
     document.getElementById('kontakt')?.scrollIntoView({ behavior: 'smooth' });
   }
 
-  function handleChange(event) {
-    const { name, value, type, checked } = event.target;
-    setFormData((current) => ({
-      ...current,
-      [name]: type === 'checkbox' ? checked : value,
-    }));
+  function handleChange(e) {
+    const { name, value, type, checked } = e.target;
+    setFormData((c) => ({ ...c, [name]: type === 'checkbox' ? checked : value }));
   }
 
-  async function handleSubmit(event) {
-    event.preventDefault();
+  async function handleSubmit(e) {
+    e.preventDefault();
     if (!formData.firstName || !formData.email || !formData.message) {
       setStatus({ type: 'error', message: 'Bitte fülle Vorname, E-Mail und Nachricht aus.' });
       return;
@@ -225,20 +206,12 @@ export default function PersonalCoachingWebsite() {
     }
     setStatus({ type: 'loading', message: 'Anfrage wird gesendet …' });
     try {
-      const response = await fetch(formspreeEndpoint, {
+      const res = await fetch(formspreeEndpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-        body: JSON.stringify({
-          Vorname: formData.firstName,
-          Email: formData.email,
-          Alter: formData.age,
-          Ziel: formData.goal,
-          Trainingserfahrung: formData.experience,
-          Nachricht: formData.message,
-          Angebot: selectedOffer,
-        }),
+        body: JSON.stringify({ Vorname: formData.firstName, Email: formData.email, Alter: formData.age, Ziel: formData.goal, Trainingserfahrung: formData.experience, Nachricht: formData.message, Angebot: selectedOffer }),
       });
-      if (!response.ok) throw new Error();
+      if (!res.ok) throw new Error();
       setStatus({ type: 'success', message: 'Danke. Deine Anfrage wurde erfolgreich gesendet.' });
       setFormData({ firstName: '', email: '', age: '', goal: 'Muskelaufbau', experience: 'Kompletter Anfänger', message: '', consent: false });
       setSelectedOffer('');
@@ -259,36 +232,27 @@ export default function PersonalCoachingWebsite() {
           </div>
 
           <nav className="hidden gap-8 text-sm font-medium text-slate-600 md:flex">
-            {navLinks.map((link) => (
-              <a key={link.href} href={link.href} className="transition-colors hover:text-blue-600">
-                {link.label}
-              </a>
+            {navLinks.map((l) => (
+              <a key={l.href} href={l.href} className="transition-colors hover:text-blue-600">{l.label}</a>
             ))}
           </nav>
 
           <div className="flex items-center gap-3">
             <button
-              type="button"
-              onClick={openCalendly}
-              className="hidden rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700 md:block"
+              type="button" onClick={openCalendly}
+              className="animate-glow hidden rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-700 md:block"
             >
               Erstgespräch buchen
             </button>
             <button
-              type="button"
+              type="button" aria-label="Menü"
               className="rounded-lg p-2 text-slate-600 transition hover:bg-slate-100 md:hidden"
               onClick={() => setMobileMenuOpen((v) => !v)}
-              aria-label="Menü"
             >
-              {mobileMenuOpen ? (
-                <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              ) : (
-                <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
-                </svg>
-              )}
+              {mobileMenuOpen
+                ? <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+                : <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" /></svg>
+              }
             </button>
           </div>
         </div>
@@ -296,23 +260,14 @@ export default function PersonalCoachingWebsite() {
         {mobileMenuOpen && (
           <div className="border-t border-slate-100 bg-white px-6 pb-6 md:hidden">
             <nav className="mt-4 flex flex-col gap-1">
-              {navLinks.map((link) => (
-                <a
-                  key={link.href}
-                  href={link.href}
-                  onClick={() => setMobileMenuOpen(false)}
+              {navLinks.map((l) => (
+                <a key={l.href} href={l.href} onClick={() => setMobileMenuOpen(false)}
                   className="rounded-lg px-3 py-2.5 text-sm font-medium text-slate-700 transition hover:bg-slate-50 hover:text-blue-600"
-                >
-                  {link.label}
-                </a>
+                >{l.label}</a>
               ))}
-              <button
-                type="button"
-                onClick={openCalendly}
-                className="mt-3 rounded-xl bg-blue-600 px-5 py-3 text-center text-sm font-semibold text-white transition hover:bg-blue-700"
-              >
-                Kostenloses Erstgespräch buchen
-              </button>
+              <button type="button" onClick={openCalendly}
+                className="mt-3 rounded-xl bg-blue-600 px-5 py-3 text-center text-sm font-semibold text-white"
+              >Kostenloses Erstgespräch buchen</button>
             </nav>
           </div>
         )}
@@ -321,9 +276,13 @@ export default function PersonalCoachingWebsite() {
       <main>
         {/* ── HERO ── */}
         <section className="relative overflow-hidden bg-gradient-to-br from-slate-50 via-blue-50/40 to-white">
-          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_rgba(59,130,246,0.08),_transparent_70%)]" />
+          {/* Animated background blobs */}
+          <div className="animate-blob pointer-events-none absolute -right-20 -top-20 h-96 w-96 rounded-full bg-blue-200/35 blur-3xl" />
+          <div className="animate-blob pointer-events-none absolute -bottom-24 -left-24 h-80 w-80 rounded-full bg-blue-100/40 blur-3xl" style={{ animationDelay: '4s' }} />
+          <div className="animate-blob pointer-events-none absolute right-1/3 top-1/2 h-56 w-56 rounded-full bg-indigo-100/30 blur-3xl" style={{ animationDelay: '7s' }} />
+
           <div className="relative mx-auto grid max-w-7xl gap-12 px-6 py-20 md:grid-cols-2 md:items-center md:py-28">
-            <div>
+            <Reveal>
               <span className="inline-flex items-center gap-2 rounded-full border border-blue-200 bg-blue-50 px-4 py-2 text-sm font-medium text-blue-700">
                 <span className="h-2 w-2 rounded-full bg-blue-500" />
                 Professionelles Online Coaching für Anfänger
@@ -339,15 +298,12 @@ export default function PersonalCoachingWebsite() {
               </p>
 
               <div className="mt-8 flex flex-wrap gap-4">
-                <button
-                  type="button"
-                  onClick={openCalendly}
-                  className="rounded-xl bg-blue-600 px-7 py-3.5 font-semibold text-white shadow-md shadow-blue-200 transition hover:bg-blue-700"
+                <button type="button" onClick={openCalendly}
+                  className="animate-glow rounded-xl bg-blue-600 px-7 py-3.5 font-semibold text-white transition hover:bg-blue-700"
                 >
                   Kostenloses Erstgespräch
                 </button>
-                <a
-                  href="#angebot"
+                <a href="#angebot"
                   className="rounded-xl border border-slate-200 bg-white px-7 py-3.5 font-semibold text-slate-800 transition hover:border-blue-200 hover:bg-blue-50"
                 >
                   Angebot ansehen
@@ -356,126 +312,100 @@ export default function PersonalCoachingWebsite() {
 
               <div className="mt-10 flex flex-wrap gap-8">
                 {[
-                  { value: '1:1', label: 'Individuelle Betreuung' },
+                  { value: '1:1',    label: 'Individuelle Betreuung' },
                   { value: 'Online', label: 'Ortsunabhängig' },
-                  { value: '100%', label: 'Auf dich zugeschnitten' },
-                ].map((stat) => (
-                  <div key={stat.value} className="flex items-center gap-3">
-                    <p className="text-2xl font-extrabold text-blue-600">{stat.value}</p>
-                    <p className="text-sm font-medium text-slate-500">{stat.label}</p>
+                  { value: '100%',   label: 'Auf dich zugeschnitten' },
+                ].map((s) => (
+                  <div key={s.value} className="flex items-center gap-3">
+                    <p className="text-2xl font-extrabold text-blue-600">{s.value}</p>
+                    <p className="text-sm font-medium text-slate-500">{s.label}</p>
                   </div>
                 ))}
               </div>
-            </div>
+            </Reveal>
 
-            <div className="relative">
-              <div className="absolute -inset-4 rounded-[3rem] bg-gradient-to-br from-blue-100 to-blue-50 opacity-60" />
-              <img
-                src={heroImage}
-                alt="FormWerk Coaching"
-                className="relative w-full rounded-[2rem] object-cover shadow-xl"
-              />
-              <div className="absolute -bottom-4 -left-4 rounded-2xl border border-blue-100 bg-white p-4 shadow-lg">
-                <p className="text-xs font-semibold uppercase tracking-wider text-blue-600">Sonderangebot</p>
-                <p className="mt-1 font-bold text-slate-900">59 € / Monat</p>
-                <p className="text-xs text-slate-500">Nur für die ersten 5 Kunden</p>
+            <Reveal delay={0.15}>
+              <div className="relative">
+                <div className="absolute -inset-4 rounded-[3rem] bg-gradient-to-br from-blue-100 to-blue-50 opacity-60" />
+                <img src={heroImage} alt="FormWerk Coaching" className="relative w-full rounded-[2rem] object-cover shadow-xl" />
+                {/* Floating price badge */}
+                <div className="animate-float absolute -bottom-4 -left-4 rounded-2xl border border-blue-100 bg-white p-4 shadow-lg">
+                  <p className="text-xs font-semibold uppercase tracking-wider text-blue-600">Sonderangebot</p>
+                  <p className="mt-1 font-bold text-slate-900">59 € / Monat</p>
+                  <p className="text-xs text-slate-500">Nur für die ersten 5 Kunden</p>
+                </div>
               </div>
-            </div>
+            </Reveal>
           </div>
         </section>
 
         {/* ── ANGEBOTE ── */}
         <section id="angebot" className="bg-white">
           <div className="mx-auto max-w-7xl px-6 py-20">
-            <div className="mb-14 text-center">
+            <Reveal className="mb-14 text-center">
               <p className="text-sm font-semibold uppercase tracking-[0.25em] text-blue-600">Angebot</p>
-              <h3 className="mt-3 text-3xl font-extrabold tracking-tight md:text-4xl">
-                Wähle das passende Coaching-Modell
-              </h3>
+              <h3 className="mt-3 text-3xl font-extrabold tracking-tight md:text-4xl">Wähle das passende Coaching-Modell</h3>
               <p className="mx-auto mt-4 max-w-xl text-slate-500">
                 Vom vergünstigten Einstieg bis zur engeren 1:1 Begleitung – klar erkennbar, welches Angebot zu deinem Bedarf passt.
               </p>
-            </div>
+            </Reveal>
 
             <div className="grid gap-6 lg:grid-cols-3">
-              {offers.map((offer) => (
-                <div
-                  key={offer.name}
-                  className={`relative flex flex-col rounded-[2rem] border p-8 shadow-sm transition hover:shadow-md ${
-                    offer.highlight
-                      ? 'border-blue-200 bg-blue-600 text-white ring-2 ring-blue-300'
-                      : 'border-slate-200 bg-white text-slate-900'
-                  }`}
-                >
-                  {offer.badge && (
-                    <span
-                      className={`absolute -top-3 left-8 rounded-full px-4 py-1 text-xs font-bold shadow-sm ${
-                        offer.highlight ? 'bg-white text-blue-600' : 'bg-blue-600 text-white'
-                      }`}
-                    >
-                      {offer.badge}
-                    </span>
-                  )}
+              {offers.map((offer, i) => (
+                <Reveal key={offer.name} delay={i * 0.12}>
+                  <TiltCard className="h-full">
+                    <div className={`relative flex h-full flex-col rounded-[2rem] border p-8 ${
+                      offer.highlight
+                        ? 'animate-shimmer-ring border-blue-300 bg-blue-600 text-white ring-2 ring-blue-300'
+                        : 'border-slate-200 bg-white text-slate-900 shadow-sm'
+                    }`}>
+                      {offer.badge && (
+                        <span className={`absolute -top-3 left-8 rounded-full px-4 py-1 text-xs font-bold shadow-sm ${
+                          offer.highlight ? 'bg-white text-blue-600' : 'bg-blue-600 text-white'
+                        }`}>{offer.badge}</span>
+                      )}
 
-                  <div>
-                    <h4 className={`text-xl font-bold ${offer.highlight ? 'text-white' : 'text-slate-900'}`}>
-                      {offer.name}
-                    </h4>
-                    <p className={`mt-1 text-sm ${offer.highlight ? 'text-blue-100' : 'text-slate-500'}`}>
-                      {offer.subtitle}
-                    </p>
-                    <div className="mt-5 flex items-end gap-1">
-                      <span className={`text-5xl font-extrabold tracking-tight ${offer.highlight ? 'text-white' : 'text-blue-600'}`}>
-                        {offer.price} €
-                      </span>
-                      <span className={`mb-1.5 text-sm ${offer.highlight ? 'text-blue-100' : 'text-slate-400'}`}>
-                        {offer.period}
-                      </span>
-                    </div>
-                  </div>
+                      <div>
+                        <h4 className={`text-xl font-bold ${offer.highlight ? 'text-white' : 'text-slate-900'}`}>{offer.name}</h4>
+                        <p className={`mt-1 text-sm ${offer.highlight ? 'text-blue-100' : 'text-slate-500'}`}>{offer.subtitle}</p>
+                        <div className="mt-5 flex items-end gap-1">
+                          <span className={`text-5xl font-extrabold tracking-tight ${offer.highlight ? 'text-white' : 'text-blue-600'}`}>{offer.price} €</span>
+                          <span className={`mb-1.5 text-sm ${offer.highlight ? 'text-blue-100' : 'text-slate-400'}`}>{offer.period}</span>
+                        </div>
+                      </div>
 
-                  <div className="mt-8 flex-1 space-y-3">
-                    {offer.features.map((feature) => (
-                      <div key={feature} className="flex items-center gap-3">
-                        <span
-                          className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full ${
-                            offer.highlight ? 'bg-white/20' : 'bg-blue-50'
+                      <div className="mt-8 flex-1 space-y-3">
+                        {offer.features.map((f) => (
+                          <div key={f} className="flex items-center gap-3">
+                            <span className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full ${offer.highlight ? 'bg-white/20' : 'bg-blue-50'}`}>
+                              <CheckIcon light={offer.highlight} />
+                            </span>
+                            <span className={`text-sm ${offer.highlight ? 'text-blue-50' : 'text-slate-700'}`}>{f}</span>
+                          </div>
+                        ))}
+                      </div>
+
+                      <div className="mt-8 space-y-3">
+                        <a
+                          href={offer.paymentLink} target="_blank" rel="noopener noreferrer"
+                          className={`inline-flex w-full items-center justify-center rounded-xl px-5 py-3.5 text-sm font-bold shadow-sm transition hover:scale-[1.02] ${
+                            offer.highlight ? 'bg-white text-blue-600 hover:bg-blue-50' : 'bg-blue-600 text-white hover:bg-blue-700'
                           }`}
                         >
-                          <CheckIcon light={offer.highlight} />
-                        </span>
-                        <span className={`text-sm ${offer.highlight ? 'text-blue-50' : 'text-slate-700'}`}>
-                          {feature}
-                        </span>
+                          Jetzt buchen
+                        </a>
+                        <a
+                          href={`mailto:polgota.buisness@gmail.com?subject=${encodeURIComponent(`Anfrage ${offer.name}`)}`}
+                          className={`inline-flex w-full items-center justify-center rounded-xl border px-5 py-3 text-sm font-semibold transition ${
+                            offer.highlight ? 'border-white/30 text-white hover:bg-white/10' : 'border-slate-200 text-slate-700 hover:bg-slate-50'
+                          }`}
+                        >
+                          Per E-Mail anfragen
+                        </a>
                       </div>
-                    ))}
-                  </div>
-
-                  <div className="mt-8 space-y-3">
-                    <a
-                      href={offer.paymentLink}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className={`inline-flex w-full items-center justify-center rounded-xl px-5 py-3.5 text-sm font-bold shadow-sm transition ${
-                        offer.highlight
-                          ? 'bg-white text-blue-600 hover:bg-blue-50'
-                          : 'bg-blue-600 text-white hover:bg-blue-700'
-                      }`}
-                    >
-                      Jetzt buchen
-                    </a>
-                    <a
-                      href={`mailto:polgota.buisness@gmail.com?subject=${encodeURIComponent(`Anfrage ${offer.name}`)}`}
-                      className={`inline-flex w-full items-center justify-center rounded-xl border px-5 py-3 text-sm font-semibold transition ${
-                        offer.highlight
-                          ? 'border-white/30 text-white hover:bg-white/10'
-                          : 'border-slate-200 text-slate-700 hover:bg-slate-50'
-                      }`}
-                    >
-                      Per E-Mail anfragen
-                    </a>
-                  </div>
-                </div>
+                    </div>
+                  </TiltCard>
+                </Reveal>
               ))}
             </div>
           </div>
@@ -484,26 +414,27 @@ export default function PersonalCoachingWebsite() {
         {/* ── LEISTUNGEN ── */}
         <section className="bg-slate-50">
           <div className="mx-auto max-w-7xl px-6 py-20">
-            <div className="mb-14 text-center">
+            <Reveal className="mb-14 text-center">
               <p className="text-sm font-semibold uppercase tracking-[0.25em] text-blue-600">Leistungsübersicht</p>
               <h3 className="mt-3 text-3xl font-extrabold tracking-tight md:text-4xl">Was du konkret bekommst</h3>
-              <p className="mx-auto mt-4 max-w-xl text-slate-500">
-                Diese Schwerpunkte deckt das Coaching in Training, Ernährung und Betreuung ab.
-              </p>
-            </div>
+              <p className="mx-auto mt-4 max-w-xl text-slate-500">Diese Schwerpunkte deckt das Coaching in Training, Ernährung und Betreuung ab.</p>
+            </Reveal>
 
             <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
-              {benefits.map((benefit) => (
-                <div
-                  key={benefit.title}
-                  className="group rounded-[1.5rem] border border-slate-200 bg-white p-6 shadow-sm transition hover:border-blue-200 hover:shadow-md"
-                >
-                  <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-xl bg-blue-50">
-                    <CheckIcon />
-                  </div>
-                  <h4 className="text-base font-bold text-slate-900">{benefit.title}</h4>
-                  <p className="mt-2 text-sm leading-6 text-slate-500">{benefit.text}</p>
-                </div>
+              {benefits.map((b, i) => (
+                <Reveal key={b.title} delay={i * 0.1}>
+                  <TiltCard className="h-full">
+                    <div className="group flex h-full flex-col rounded-[1.5rem] border border-slate-200 bg-white p-6 shadow-sm transition hover:border-blue-200 hover:shadow-md">
+                      <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-xl bg-blue-50 transition group-hover:bg-blue-600 group-hover:shadow-md group-hover:shadow-blue-200">
+                        <svg className="h-5 w-5 text-blue-600 transition group-hover:text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+                        </svg>
+                      </div>
+                      <h4 className="text-base font-bold text-slate-900">{b.title}</h4>
+                      <p className="mt-2 text-sm leading-6 text-slate-500">{b.text}</p>
+                    </div>
+                  </TiltCard>
+                </Reveal>
               ))}
             </div>
           </div>
@@ -513,34 +444,27 @@ export default function PersonalCoachingWebsite() {
         <section id="ablauf" className="bg-white">
           <div className="mx-auto max-w-7xl px-6 py-20">
             <div className="grid gap-12 md:grid-cols-2 md:items-start">
-              <div className="md:sticky md:top-28">
+              <Reveal className="md:sticky md:top-28">
                 <p className="text-sm font-semibold uppercase tracking-[0.25em] text-blue-600">Ablauf</p>
-                <h3 className="mt-3 text-3xl font-extrabold tracking-tight md:text-4xl">
-                  So läuft die Zusammenarbeit ab
-                </h3>
-                <p className="mt-4 leading-7 text-slate-500">
-                  Die Zusammenarbeit ist klar aufgebaut, damit du von Anfang an weißt, was dich erwartet.
-                </p>
-                <button
-                  type="button"
-                  onClick={openCalendly}
-                  className="mt-8 inline-flex rounded-xl bg-blue-600 px-6 py-3 font-semibold text-white shadow-md shadow-blue-200 transition hover:bg-blue-700"
+                <h3 className="mt-3 text-3xl font-extrabold tracking-tight md:text-4xl">So läuft die Zusammenarbeit ab</h3>
+                <p className="mt-4 leading-7 text-slate-500">Die Zusammenarbeit ist klar aufgebaut, damit du von Anfang an weißt, was dich erwartet.</p>
+                <button type="button" onClick={openCalendly}
+                  className="animate-glow mt-8 inline-flex rounded-xl bg-blue-600 px-6 py-3 font-semibold text-white transition hover:bg-blue-700"
                 >
                   Erstgespräch direkt buchen
                 </button>
-              </div>
+              </Reveal>
 
               <div className="space-y-4">
-                {steps.map((step, index) => (
-                  <div
-                    key={step}
-                    className="flex gap-5 rounded-[1.5rem] border border-slate-100 bg-slate-50 p-5 shadow-sm"
-                  >
-                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-blue-600 text-sm font-bold text-white shadow-md shadow-blue-200">
-                      {index + 1}
+                {steps.map((step, i) => (
+                  <Reveal key={step} delay={i * 0.1}>
+                    <div className="group flex gap-5 rounded-[1.5rem] border border-slate-100 bg-slate-50 p-5 shadow-sm transition hover:border-blue-100 hover:bg-blue-50/40 hover:shadow-md">
+                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-blue-600 text-sm font-bold text-white shadow-md shadow-blue-200 transition group-hover:scale-110">
+                        {i + 1}
+                      </div>
+                      <p className="flex items-center font-medium text-slate-800">{step}</p>
                     </div>
-                    <p className="flex items-center font-medium text-slate-800">{step}</p>
-                  </div>
+                  </Reveal>
                 ))}
               </div>
             </div>
@@ -551,7 +475,7 @@ export default function PersonalCoachingWebsite() {
         <section id="ueber-mich" className="bg-slate-50">
           <div className="mx-auto max-w-7xl px-6 py-20">
             <div className="grid gap-10 md:grid-cols-[1.1fr_0.9fr] md:items-center">
-              <div>
+              <Reveal>
                 <p className="text-sm font-semibold uppercase tracking-[0.25em] text-blue-600">Über mich</p>
                 <h3 className="mt-3 text-3xl font-extrabold tracking-tight md:text-4xl">
                   Verständlich, professionell und auf langfristigen Fortschritt ausgerichtet.
@@ -564,31 +488,35 @@ export default function PersonalCoachingWebsite() {
                 </p>
                 <div className="mt-8 flex flex-wrap gap-3">
                   {['Anfängercoaching', 'Training + Ernährung', 'Online & flexibel'].map((tag) => (
-                    <span key={tag} className="rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm">
+                    <span key={tag} className="rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:border-blue-200 hover:text-blue-600">
                       {tag}
                     </span>
                   ))}
                 </div>
-              </div>
+              </Reveal>
 
-              <div className="rounded-[2rem] border border-slate-200 bg-white p-8 shadow-sm">
-                <p className="mb-6 text-sm font-semibold uppercase tracking-wider text-blue-600">Warum du hier richtig bist</p>
-                <div className="space-y-4">
-                  {[
-                    'Klare und verständliche Trainingsstruktur statt Überforderung',
-                    'Realistische Ernährungsstrategien für den Alltag',
-                    'Regelmäßige Rückmeldungen und Anpassungen',
-                    'Professioneller, ruhiger Auftritt statt lauter Fitness-Show',
-                  ].map((point) => (
-                    <div key={point} className="flex items-start gap-3">
-                      <div className="mt-0.5">
-                        <CheckIcon />
-                      </div>
-                      <p className="text-sm leading-6 text-slate-700">{point}</p>
+              <Reveal delay={0.15}>
+                <TiltCard>
+                  <div className="rounded-[2rem] border border-slate-200 bg-white p-8 shadow-sm">
+                    <p className="mb-6 text-sm font-semibold uppercase tracking-wider text-blue-600">Warum du hier richtig bist</p>
+                    <div className="space-y-4">
+                      {[
+                        'Klare und verständliche Trainingsstruktur statt Überforderung',
+                        'Realistische Ernährungsstrategien für den Alltag',
+                        'Regelmäßige Rückmeldungen und Anpassungen',
+                        'Professioneller, ruhiger Auftritt statt lauter Fitness-Show',
+                      ].map((point, i) => (
+                        <Reveal key={point} delay={i * 0.08}>
+                          <div className="flex items-start gap-3">
+                            <div className="mt-0.5"><CheckIcon /></div>
+                            <p className="text-sm leading-6 text-slate-700">{point}</p>
+                          </div>
+                        </Reveal>
+                      ))}
                     </div>
-                  ))}
-                </div>
-              </div>
+                  </div>
+                </TiltCard>
+              </Reveal>
             </div>
           </div>
         </section>
@@ -596,20 +524,20 @@ export default function PersonalCoachingWebsite() {
         {/* ── FAQ ── */}
         <section id="faq" className="bg-white">
           <div className="mx-auto max-w-7xl px-6 py-20">
-            <div className="mb-14 text-center">
+            <Reveal className="mb-14 text-center">
               <p className="text-sm font-semibold uppercase tracking-[0.25em] text-blue-600">FAQ</p>
               <h3 className="mt-3 text-3xl font-extrabold tracking-tight md:text-4xl">Häufige Fragen</h3>
-              <p className="mx-auto mt-4 max-w-xl text-slate-500">
-                Antworten auf häufige Fragen zur Zusammenarbeit, zum Ablauf und zu den Inhalten des Coachings.
-              </p>
-            </div>
+              <p className="mx-auto mt-4 max-w-xl text-slate-500">Antworten auf häufige Fragen zur Zusammenarbeit, zum Ablauf und zu den Inhalten des Coachings.</p>
+            </Reveal>
 
             <div className="mx-auto max-w-3xl space-y-4">
-              {faqs.map((item) => (
-                <div key={item.q} className="rounded-[1.5rem] border border-slate-200 bg-slate-50 p-6 shadow-sm">
-                  <h4 className="font-bold text-slate-900">{item.q}</h4>
-                  <p className="mt-3 leading-7 text-slate-600">{item.a}</p>
-                </div>
+              {faqs.map((item, i) => (
+                <Reveal key={item.q} delay={i * 0.08}>
+                  <div className="rounded-[1.5rem] border border-slate-200 bg-slate-50 p-6 shadow-sm transition hover:border-blue-100 hover:shadow-md">
+                    <h4 className="font-bold text-slate-900">{item.q}</h4>
+                    <p className="mt-3 leading-7 text-slate-600">{item.a}</p>
+                  </div>
+                </Reveal>
               ))}
             </div>
           </div>
@@ -620,19 +548,15 @@ export default function PersonalCoachingWebsite() {
           <div className="mx-auto max-w-7xl px-6 py-20">
             <div className="mx-auto max-w-5xl rounded-[2rem] border border-slate-200 bg-white p-8 shadow-sm md:p-12">
               <div className="grid gap-10 md:grid-cols-[0.9fr_1.1fr] md:items-start">
-                <div>
+                <Reveal>
                   <p className="text-sm font-semibold uppercase tracking-[0.25em] text-blue-600">Kontakt</p>
                   <h3 className="mt-3 text-3xl font-extrabold tracking-tight md:text-4xl">
                     Lass uns unverbindlich prüfen, ob das Coaching zu dir passt.
                   </h3>
-                  <p className="mt-4 text-slate-500">
-                    Wenn du Interesse hast, kannst du hier direkt unverbindlich anfragen und kurz dein Ziel sowie deine aktuelle Situation schildern.
-                  </p>
+                  <p className="mt-4 text-slate-500">Wenn du Interesse hast, kannst du hier direkt unverbindlich anfragen und kurz dein Ziel sowie deine aktuelle Situation schildern.</p>
 
-                  <button
-                    type="button"
-                    onClick={openCalendly}
-                    className="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-blue-600 px-5 py-3.5 font-semibold text-white shadow-md shadow-blue-200 transition hover:bg-blue-700"
+                  <button type="button" onClick={openCalendly}
+                    className="animate-glow mt-6 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-blue-600 px-5 py-3.5 font-semibold text-white transition hover:bg-blue-700"
                   >
                     <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                       <path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
@@ -647,164 +571,118 @@ export default function PersonalCoachingWebsite() {
                         <p className="mt-1 font-bold text-slate-900">{selectedOffer}</p>
                       </div>
                     )}
-                    <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
-                      <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">E-Mail</p>
-                      <p className="mt-1 break-all font-semibold text-slate-800">polgota.buisness@gmail.com</p>
-                    </div>
-                    <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
-                      <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">Antwortzeit</p>
-                      <p className="mt-1 font-semibold text-slate-800">innerhalb von 24–48 Stunden</p>
-                    </div>
-                    <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
-                      <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">Format</p>
-                      <p className="mt-1 font-semibold text-slate-800">Ortsunabhängig & online</p>
-                    </div>
+                    {[
+                      { label: 'E-Mail',        value: 'polgota.buisness@gmail.com' },
+                      { label: 'Antwortzeit',   value: 'innerhalb von 24–48 Stunden' },
+                      { label: 'Format',        value: 'Ortsunabhängig & online' },
+                    ].map((row) => (
+                      <div key={row.label} className="rounded-xl border border-slate-200 bg-slate-50 p-4 transition hover:border-blue-100">
+                        <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">{row.label}</p>
+                        <p className="mt-1 break-all font-semibold text-slate-800">{row.value}</p>
+                      </div>
+                    ))}
                   </div>
-                </div>
+                </Reveal>
 
-                <form onSubmit={handleSubmit} className="rounded-[1.5rem] border border-slate-100 bg-slate-50 p-6">
-                  <p className="mb-4 text-sm font-semibold text-slate-500">Oder schreib mir direkt:</p>
-                  <div className="grid gap-4 md:grid-cols-2">
-                    <div>
-                      <label className="mb-1.5 block text-sm font-semibold text-slate-700">Vorname</label>
-                      <input
-                        name="firstName"
-                        type="text"
-                        required
-                        value={formData.firstName}
-                        onChange={handleChange}
-                        placeholder="Dein Vorname"
-                        className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-slate-900 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
-                      />
+                <Reveal delay={0.15}>
+                  <form onSubmit={handleSubmit} className="rounded-[1.5rem] border border-slate-100 bg-slate-50 p-6">
+                    <p className="mb-4 text-sm font-semibold text-slate-500">Oder schreib mir direkt:</p>
+                    <div className="grid gap-4 md:grid-cols-2">
+                      {[
+                        { name: 'firstName', label: 'Vorname', type: 'text',  placeholder: 'Dein Vorname',   required: true },
+                        { name: 'email',     label: 'E-Mail',  type: 'email', placeholder: 'deine@email.de', required: true },
+                        { name: 'age',       label: 'Alter',   type: 'text',  placeholder: 'z. B. 24',       required: false },
+                      ].map((field) => (
+                        <div key={field.name} className={field.name === 'age' ? '' : ''}>
+                          <label className="mb-1.5 block text-sm font-semibold text-slate-700">{field.label}</label>
+                          <input
+                            name={field.name} type={field.type} required={field.required}
+                            value={formData[field.name]} onChange={handleChange} placeholder={field.placeholder}
+                            className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-slate-900 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                          />
+                        </div>
+                      ))}
+                      <div>
+                        <label className="mb-1.5 block text-sm font-semibold text-slate-700">Ziel</label>
+                        <select name="goal" value={formData.goal} onChange={handleChange}
+                          className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-slate-900 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                        >
+                          <option>Muskelaufbau</option>
+                          <option>Fettverlust</option>
+                          <option>Allgemein fitter werden</option>
+                          <option>Struktur in Training und Ernährung</option>
+                        </select>
+                      </div>
                     </div>
-                    <div>
-                      <label className="mb-1.5 block text-sm font-semibold text-slate-700">E-Mail</label>
-                      <input
-                        name="email"
-                        type="email"
-                        required
-                        value={formData.email}
-                        onChange={handleChange}
-                        placeholder="deine@email.de"
-                        className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-slate-900 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
-                      />
-                    </div>
-                    <div>
-                      <label className="mb-1.5 block text-sm font-semibold text-slate-700">Alter</label>
-                      <input
-                        name="age"
-                        type="text"
-                        value={formData.age}
-                        onChange={handleChange}
-                        placeholder="z. B. 24"
-                        className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-slate-900 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
-                      />
-                    </div>
-                    <div>
-                      <label className="mb-1.5 block text-sm font-semibold text-slate-700">Ziel</label>
-                      <select
-                        name="goal"
-                        value={formData.goal}
-                        onChange={handleChange}
+
+                    <div className="mt-4">
+                      <label className="mb-1.5 block text-sm font-semibold text-slate-700">Trainingserfahrung</label>
+                      <select name="experience" value={formData.experience} onChange={handleChange}
                         className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-slate-900 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
                       >
-                        <option>Muskelaufbau</option>
-                        <option>Fettverlust</option>
-                        <option>Allgemein fitter werden</option>
-                        <option>Struktur in Training und Ernährung</option>
+                        <option>Kompletter Anfänger</option>
+                        <option>Wenig Erfahrung</option>
+                        <option>Schon etwas Erfahrung</option>
                       </select>
                     </div>
-                  </div>
 
-                  <div className="mt-4">
-                    <label className="mb-1.5 block text-sm font-semibold text-slate-700">Trainingserfahrung</label>
-                    <select
-                      name="experience"
-                      value={formData.experience}
-                      onChange={handleChange}
-                      className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-slate-900 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
-                    >
-                      <option>Kompletter Anfänger</option>
-                      <option>Wenig Erfahrung</option>
-                      <option>Schon etwas Erfahrung</option>
-                    </select>
-                  </div>
-
-                  <div className="mt-4">
-                    <label className="mb-1.5 block text-sm font-semibold text-slate-700">Nachricht</label>
-                    <textarea
-                      name="message"
-                      rows={5}
-                      required
-                      value={formData.message}
-                      onChange={handleChange}
-                      placeholder="Beschreibe kurz deine aktuelle Situation, dein Ziel und wobei du Unterstützung suchst."
-                      className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-slate-900 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
-                    />
-                  </div>
-
-                  <div className="mt-4 flex items-start gap-3 rounded-xl border border-blue-100 bg-blue-50 p-4">
-                    <input
-                      name="consent"
-                      type="checkbox"
-                      checked={formData.consent}
-                      onChange={handleChange}
-                      className="mt-0.5 h-4 w-4 rounded border-slate-300 accent-blue-600"
-                    />
-                    <p className="text-sm leading-6 text-slate-600">
-                      Ich stimme zu, dass meine Angaben zur Bearbeitung meiner Anfrage per E-Mail verwendet werden. Details findest du in der{' '}
-                      <a href="/datenschutz.html" className="underline hover:text-blue-600">Datenschutzerklärung</a>.
-                    </p>
-                  </div>
-
-                  {status.type !== 'idle' && (
-                    <div
-                      className={`mt-4 rounded-xl border px-4 py-3 text-sm font-medium ${
-                        status.type === 'success'
-                          ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
-                          : status.type === 'error'
-                          ? 'border-red-200 bg-red-50 text-red-700'
-                          : 'border-blue-200 bg-blue-50 text-blue-700'
-                      }`}
-                    >
-                      {status.message}
+                    <div className="mt-4">
+                      <label className="mb-1.5 block text-sm font-semibold text-slate-700">Nachricht</label>
+                      <textarea name="message" rows={5} required value={formData.message} onChange={handleChange}
+                        placeholder="Beschreibe kurz deine aktuelle Situation, dein Ziel und wobei du Unterstützung suchst."
+                        className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-slate-900 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                      />
                     </div>
-                  )}
 
-                  <button
-                    type="submit"
-                    disabled={status.type === 'loading'}
-                    className="mt-5 inline-flex w-full items-center justify-center rounded-xl bg-blue-600 px-6 py-3.5 font-bold text-white shadow-md shadow-blue-200 transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
-                  >
-                    {status.type === 'loading' ? 'Wird gesendet …' : 'Anfrage absenden'}
-                  </button>
-                </form>
+                    <div className="mt-4 flex items-start gap-3 rounded-xl border border-blue-100 bg-blue-50 p-4">
+                      <input name="consent" type="checkbox" checked={formData.consent} onChange={handleChange}
+                        className="mt-0.5 h-4 w-4 rounded border-slate-300 accent-blue-600"
+                      />
+                      <p className="text-sm leading-6 text-slate-600">
+                        Ich stimme zu, dass meine Angaben zur Bearbeitung meiner Anfrage per E-Mail verwendet werden. Details findest du in der{' '}
+                        <a href="/datenschutz.html" className="underline hover:text-blue-600">Datenschutzerklärung</a>.
+                      </p>
+                    </div>
+
+                    {status.type !== 'idle' && (
+                      <div className={`mt-4 rounded-xl border px-4 py-3 text-sm font-medium ${
+                        status.type === 'success' ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
+                          : status.type === 'error' ? 'border-red-200 bg-red-50 text-red-700'
+                          : 'border-blue-200 bg-blue-50 text-blue-700'
+                      }`}>{status.message}</div>
+                    )}
+
+                    <button type="submit" disabled={status.type === 'loading'}
+                      className="animate-glow mt-5 inline-flex w-full items-center justify-center rounded-xl bg-blue-600 px-6 py-3.5 font-bold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      {status.type === 'loading' ? 'Wird gesendet …' : 'Anfrage absenden'}
+                    </button>
+                  </form>
+                </Reveal>
               </div>
             </div>
           </div>
         </section>
 
         {/* ── CTA BANNER ── */}
-        <section className="bg-gradient-to-br from-blue-600 to-blue-700 text-white">
-          <div className="mx-auto max-w-7xl px-6 py-16">
-            <div className="flex flex-col items-center gap-8 text-center md:flex-row md:justify-between md:text-left">
-              <div className="max-w-2xl">
-                <p className="text-sm font-semibold uppercase tracking-[0.25em] text-blue-200">Nächster Schritt</p>
-                <h3 className="mt-3 text-3xl font-extrabold tracking-tight md:text-4xl">
-                  Starte mit einem kostenlosen Erstgespräch.
-                </h3>
-                <p className="mt-4 text-blue-100">
-                  Teile kurz dein Ziel und deine Ausgangslage mit. Danach schauen wir gemeinsam, welches Angebot für dich sinnvoll ist.
-                </p>
+        <section className="relative overflow-hidden bg-gradient-to-br from-blue-600 to-blue-700 text-white">
+          <div className="animate-blob pointer-events-none absolute -right-16 -top-16 h-72 w-72 rounded-full bg-white/10 blur-3xl" />
+          <div className="animate-blob pointer-events-none absolute -bottom-16 left-1/4 h-56 w-56 rounded-full bg-white/5 blur-3xl" style={{ animationDelay: '5s' }} />
+          <div className="relative mx-auto max-w-7xl px-6 py-16">
+            <Reveal>
+              <div className="flex flex-col items-center gap-8 text-center md:flex-row md:justify-between md:text-left">
+                <div className="max-w-2xl">
+                  <p className="text-sm font-semibold uppercase tracking-[0.25em] text-blue-200">Nächster Schritt</p>
+                  <h3 className="mt-3 text-3xl font-extrabold tracking-tight md:text-4xl">Starte mit einem kostenlosen Erstgespräch.</h3>
+                  <p className="mt-4 text-blue-100">Teile kurz dein Ziel und deine Ausgangslage mit. Danach schauen wir gemeinsam, welches Angebot für dich sinnvoll ist.</p>
+                </div>
+                <button type="button" onClick={openCalendly}
+                  className="shrink-0 rounded-xl bg-white px-8 py-4 font-bold text-blue-600 shadow-lg transition hover:scale-105 hover:opacity-90"
+                >
+                  Jetzt Termin buchen
+                </button>
               </div>
-              <button
-                type="button"
-                onClick={openCalendly}
-                className="shrink-0 rounded-xl bg-white px-8 py-4 font-bold text-blue-600 shadow-lg transition hover:opacity-90"
-              >
-                Jetzt Termin buchen
-              </button>
-            </div>
+            </Reveal>
           </div>
         </section>
       </main>
@@ -816,32 +694,23 @@ export default function PersonalCoachingWebsite() {
             <p className="text-sm font-bold uppercase tracking-[0.25em] text-slate-300">{brandName}</p>
             <p className="mt-2 text-sm">Personal Coaching für Anfänger – Training, Ernährung und ortsunabhängige Betreuung.</p>
           </div>
-
           <div className="flex flex-wrap items-center gap-5 text-sm">
-            {navLinks.map((link) => (
-              <a key={link.href} href={link.href} className="transition hover:text-white">
-                {link.label}
-              </a>
+            {navLinks.map((l) => (
+              <a key={l.href} href={l.href} className="transition hover:text-white">{l.label}</a>
             ))}
-            <a href="/impressum.html" className="transition hover:text-white">Impressum</a>
+            <a href="/impressum.html"  className="transition hover:text-white">Impressum</a>
             <a href="/datenschutz.html" className="transition hover:text-white">Datenschutz</a>
             {INSTAGRAM_URL && !INSTAGRAM_URL.includes('DEIN_PROFIL') && (
-              <a
-                href={INSTAGRAM_URL}
-                target="_blank"
-                rel="noopener noreferrer"
-                aria-label="Instagram"
+              <a href={INSTAGRAM_URL} target="_blank" rel="noopener noreferrer" aria-label="Instagram"
                 className="flex items-center gap-2 transition hover:text-pink-400"
               >
-                <InstagramIcon />
-                <span>Instagram</span>
+                <InstagramIcon /><span>Instagram</span>
               </a>
             )}
           </div>
         </div>
       </footer>
 
-      {/* ── COOKIE BANNER ── */}
       {!cookieConsent && <CookieBanner onAccept={acceptCookies} />}
     </div>
   );
