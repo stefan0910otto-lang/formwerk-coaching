@@ -122,7 +122,7 @@ export default function PersonalCoachingWebsite() {
       subtitle: 'Nur für die ersten 5 Kunden',
       badge: 'Erste 5 Plätze',
       highlight: true,
-      paymentLink: import.meta.env.VITE_STRIPE_LINK_LAUNCH,
+      paymentLink: 'https://buy.stripe.com/4gM6oGcp85gu7cVgwG0ZW01',
       features: [
         'Kostenloses Erstgespräch',
         'Individueller Trainingsplan',
@@ -139,7 +139,7 @@ export default function PersonalCoachingWebsite() {
       subtitle: 'Für Anfänger, die sauber starten wollen',
       badge: null,
       highlight: false,
-      paymentLink: import.meta.env.VITE_STRIPE_LINK_STARTER,
+      paymentLink: 'https://buy.stripe.com/28EfZg4WGcIW9l380a0ZW00',
       features: [
         'Kostenloses Erstgespräch',
         'Individueller Trainingsplan',
@@ -156,7 +156,7 @@ export default function PersonalCoachingWebsite() {
       subtitle: 'Mehr Kontrolle, mehr Anpassung, mehr Begleitung',
       badge: 'Beliebt',
       highlight: false,
-      paymentLink: import.meta.env.VITE_STRIPE_LINK_INTENSIV,
+      paymentLink: 'https://buy.stripe.com/4gM3cuexgdN09l30xI0ZW02',
       features: [
         'Alles aus Starter Coaching',
         'Ausführlichere Ernährungsbegleitung',
@@ -246,8 +246,6 @@ export default function PersonalCoachingWebsite() {
       setStatus({ type: 'error', message: 'Der Versand hat nicht funktioniert. Bitte versuche es erneut.' });
     }
   }
-
-  const isPaymentLinkReady = (url) => url && !url.startsWith('HIER');
 
   return (
     <div className="min-h-screen bg-white text-slate-900" style={{ fontFamily: "'Inter', sans-serif" }}>
@@ -454,32 +452,18 @@ export default function PersonalCoachingWebsite() {
                   </div>
 
                   <div className="mt-8 space-y-3">
-                    {isPaymentLinkReady(offer.paymentLink) ? (
-                      <a
-                        href={offer.paymentLink}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className={`inline-flex w-full items-center justify-center rounded-xl px-5 py-3.5 text-sm font-bold shadow-sm transition ${
-                          offer.highlight
-                            ? 'bg-white text-blue-600 hover:bg-blue-50'
-                            : 'bg-blue-600 text-white hover:bg-blue-700'
-                        }`}
-                      >
-                        Jetzt buchen
-                      </a>
-                    ) : (
-                      <button
-                        type="button"
-                        onClick={() => handleOfferSelect(offer.name)}
-                        className={`inline-flex w-full items-center justify-center rounded-xl px-5 py-3.5 text-sm font-bold shadow-sm transition ${
-                          offer.highlight
-                            ? 'bg-white text-blue-600 hover:bg-blue-50'
-                            : 'bg-blue-600 text-white hover:bg-blue-700'
-                        }`}
-                      >
-                        Dieses Angebot anfragen
-                      </button>
-                    )}
+                    <a
+                      href={offer.paymentLink}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className={`inline-flex w-full items-center justify-center rounded-xl px-5 py-3.5 text-sm font-bold shadow-sm transition ${
+                        offer.highlight
+                          ? 'bg-white text-blue-600 hover:bg-blue-50'
+                          : 'bg-blue-600 text-white hover:bg-blue-700'
+                      }`}
+                    >
+                      Jetzt buchen
+                    </a>
                     <a
                       href={`mailto:polgota.buisness@gmail.com?subject=${encodeURIComponent(`Anfrage ${offer.name}`)}`}
                       className={`inline-flex w-full items-center justify-center rounded-xl border px-5 py-3 text-sm font-semibold transition ${
