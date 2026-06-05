@@ -116,7 +116,7 @@ export default function PersonalCoachingWebsite() {
   const formspreeEndpoint = 'https://formspree.io/f/xkoprgqz';
 
   const [formData, setFormData] = useState({
-    firstName: '', email: '', age: '',
+    firstName: '', lastName: '', phone: '', email: '', age: '',
     goal: 'Muskelaufbau', experience: 'Kompletter Anfänger',
     message: '', consent: false,
   });
@@ -206,14 +206,68 @@ export default function PersonalCoachingWebsite() {
     }
     setStatus({ type: 'loading', message: 'Anfrage wird gesendet …' });
     try {
+      const fullName = [formData.firstName, formData.lastName].filter(Boolean).join(' ');
       const res = await fetch(formspreeEndpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-        body: JSON.stringify({ Vorname: formData.firstName, Email: formData.email, Alter: formData.age, Ziel: formData.goal, Trainingserfahrung: formData.experience, Nachricht: formData.message, Angebot: selectedOffer }),
+        body: JSON.stringify({ Vorname: formData.firstName, Nachname: formData.lastName, Telefon: formData.phone, Email: formData.email, Alter: formData.age, Ziel: formData.goal, Trainingserfahrung: formData.experience, Nachricht: formData.message, Angebot: selectedOffer }),
       });
       if (!res.ok) throw new Error();
+
+      const leadData = {
+        id: Date.now().toString(36) + Math.random().toString(36).slice(2),
+        name: fullName,
+        lastName: formData.lastName,
+        phone: formData.phone,
+        email: formData.email,
+        age: formData.age,
+        goal: formData.goal,
+        experience: formData.experience,
+        message: formData.message,
+        offer: selectedOffer,
+        status: 'new',
+        source: 'contact-form',
+        createdAt: new Date().toISOString(),
+      };
+
+      // 1) Save to Supabase (shared DB → appears in admin panel from any device)
+      const SUPA_URL = import.meta.env.VITE_SUPABASE_URL;
+      const SUPA_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
+      if (SUPA_URL && SUPA_KEY) {
+        try {
+          await fetch(`${SUPA_URL}/rest/v1/leads`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'apikey': SUPA_KEY,
+              'Authorization': `Bearer ${SUPA_KEY}`,
+              'Prefer': 'return=minimal',
+            },
+            body: JSON.stringify({
+              name: leadData.name,
+              email: leadData.email,
+              phone: leadData.phone || null,
+              age: leadData.age || null,
+              goal: leadData.goal,
+              experience: leadData.experience,
+              message: leadData.message,
+              offer: leadData.offer || null,
+              status: 'new',
+              source: 'contact-form',
+            }),
+          });
+        } catch (err) { console.warn('Supabase lead save failed:', err); }
+      }
+
+      // 2) Also save to localStorage (for local dev / same-browser admin)
+      try {
+        const existing = JSON.parse(localStorage.getItem('fw_leads') || '[]');
+        localStorage.setItem('fw_leads', JSON.stringify([leadData, ...existing]));
+        window.dispatchEvent(new CustomEvent('fw_lead_added'));
+      } catch { /* localStorage not available */ }
+
       setStatus({ type: 'success', message: 'Danke. Deine Anfrage wurde erfolgreich gesendet.' });
-      setFormData({ firstName: '', email: '', age: '', goal: 'Muskelaufbau', experience: 'Kompletter Anfänger', message: '', consent: false });
+      setFormData({ firstName: '', lastName: '', phone: '', email: '', age: '', goal: 'Muskelaufbau', experience: 'Kompletter Anfänger', message: '', consent: false });
       setSelectedOffer('');
     } catch {
       setStatus({ type: 'error', message: 'Der Versand hat nicht funktioniert. Bitte versuche es erneut.' });
@@ -589,11 +643,13 @@ export default function PersonalCoachingWebsite() {
                     <p className="mb-4 text-sm font-semibold text-slate-500">Oder schreib mir direkt:</p>
                     <div className="grid gap-4 md:grid-cols-2">
                       {[
-                        { name: 'firstName', label: 'Vorname', type: 'text',  placeholder: 'Dein Vorname',   required: true },
-                        { name: 'email',     label: 'E-Mail',  type: 'email', placeholder: 'deine@email.de', required: true },
-                        { name: 'age',       label: 'Alter',   type: 'text',  placeholder: 'z. B. 24',       required: false },
+                        { name: 'firstName', label: 'Vorname *',  type: 'text',  placeholder: 'Dein Vorname',     required: true },
+                        { name: 'lastName',  label: 'Nachname',   type: 'text',  placeholder: 'Dein Nachname',    required: false },
+                        { name: 'email',     label: 'E-Mail *',   type: 'email', placeholder: 'deine@email.de',   required: true },
+                        { name: 'phone',     label: 'Telefon',    type: 'tel',   placeholder: '+49 151 …',        required: false },
+                        { name: 'age',       label: 'Alter',      type: 'text',  placeholder: 'z. B. 24',         required: false },
                       ].map((field) => (
-                        <div key={field.name} className={field.name === 'age' ? '' : ''}>
+                        <div key={field.name}>
                           <label className="mb-1.5 block text-sm font-semibold text-slate-700">{field.label}</label>
                           <input
                             name={field.name} type={field.type} required={field.required}
